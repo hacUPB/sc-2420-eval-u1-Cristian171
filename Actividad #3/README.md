@@ -1,15 +1,15 @@
-Objetivo:
+- Objetivo:
 En el primer trabajo se intento hacer que tocando la tecla A,b,T si se preciona A se empieza a pintar en negro si se preciona B para el porcedimiento de Color negro y se queda en 0
 que es = a blanco y si se preciona T empieza a pintar en negro virticalmente.
 
 
-Procedimiento:
+- Procedimiento:
 Se implemento de la siguente manera empezamos en el contador de pantalla que es "@16384" empezamos con un bucle que si sumo el contador al valor del puntero de la pantalla
 M=-1  Escribo -1 que es negro esto lo repito en un bucle hasta pintar la selecion que yo necesito cumplir si el numero es 0 la pantalla se queda en blanco 
 
 
 
-Concluciones:
+- Concluciones:
 hasta ahora la implementacion genera un bucle que hace que se pinte uno a uno hasta llegar a la primera parte del bucle pero despues de que se pinta la primera parte.
 El bucle hace que se pinte todo de negro 
 Buscando posibles soluciones...
