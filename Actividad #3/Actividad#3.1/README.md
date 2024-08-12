@@ -7,4 +7,4 @@ Procedimiento:
 Se implementa de la siguente forma hacemos un bucle que pregunte cuando la letra A se precione va a la pantalla y termina de pintar
 
 Conclusiones 
-La implementacion 
+La implementacion el procedimiento funciono correctamente.
