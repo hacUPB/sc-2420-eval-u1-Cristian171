@@ -1,0 +1,4 @@
+﻿  Main.c
+C:\Users\USUARIO\OneDrive\Escritorio\sc-2420-eval-u1-Cristian171\GameClasic\GameCs\GameCs\Main.c(116,40): warning C4244: '=': conversión de 'int' a 'float'; posible pérdida de datos
+C:\Users\USUARIO\OneDrive\Escritorio\sc-2420-eval-u1-Cristian171\GameClasic\GameCs\GameCs\Main.c(144,59): warning C4244: 'inicializando': conversión de 'double' a 'float'; posible pérdida de datos
+  GameCs.vcxproj -> C:\Users\USUARIO\OneDrive\Escritorio\sc-2420-eval-u1-Cristian171\GameClasic\GameCs\x64\Debug\GameCs.exe
