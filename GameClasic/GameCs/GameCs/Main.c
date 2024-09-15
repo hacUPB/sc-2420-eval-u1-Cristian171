@@ -3,11 +3,12 @@
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include <stdlib.h>
+#include <math.h>
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
 #define FRAME_TARGET_TIME (1000 / 60)  // 60 FPS
-#define MAX_STRUCTURES 5  // Número de obstáculos
+#define MAX_STRUCTURES 3  // Número de obstáculos
 #define MAX_SHOTS 10      // Número máximo de disparos
 #define MAX_COLLECTIBLES 5  // Número de recolectables
 #define MAX_BOSS_HEALTH 10  // Vida del jefe
@@ -42,7 +43,7 @@ void render_start_menu(void) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
-    char menu_text[] = "Press Enter to Start";
+    char menu_text[] = "Enter Para Iniciar";
     SDL_Color textColor = { 255, 255, 255 };
     SDL_Surface* textSurface = TTF_RenderText_Solid(font, menu_text, textColor);
     SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
@@ -69,16 +70,30 @@ void process_input(void) {
         if (event.key.keysym.sym == SDLK_SPACE && !is_jumping) {
             paddle.vel_y = jump_force;  // Aplica la fuerza de salto
             is_jumping = true;
+        }
+        break;
+    case SDL_MOUSEBUTTONDOWN:
+        if (event.button.button == SDL_BUTTON_LEFT && shot_count < MAX_SHOTS) {
+            int mouse_x, mouse_y;
+            SDL_GetMouseState(&mouse_x, &mouse_y);
 
-            // Disparar un nuevo proyectil horizontalmente
-            if (shot_count < MAX_SHOTS) {
-                shots[shot_count].x = paddle.x + paddle.width / 2;
-                shots[shot_count].y = paddle.y + paddle.height / 2 - 5;
-                shots[shot_count].width = 10;
-                shots[shot_count].height = 10;
-                shots[shot_count].vel_x = 500.0f;
-                shot_count++;
+            // Calcula la dirección del disparo
+            float dx = mouse_x - (paddle.x + paddle.width / 2);
+            float dy = mouse_y - (paddle.y + paddle.height / 2);
+            float length = sqrtf(dx * dx + dy * dy);
+            if (length > 0) {
+                dx /= length;
+                dy /= length;
             }
+
+            // Crea un nuevo proyectil
+            shots[shot_count].x = paddle.x + paddle.width / 2;
+            shots[shot_count].y = paddle.y + paddle.height / 2;
+            shots[shot_count].width = 10;
+            shots[shot_count].height = 10;
+            shots[shot_count].vel_x = dx * 500.0f;  // Velocidad ajustada
+            shots[shot_count].vel_y = dy * 500.0f;  // Velocidad ajustada
+            shot_count++;
         }
         break;
     }
@@ -97,7 +112,7 @@ void process_menu_input(void) {
 
 void setup(void) {
     paddle.width = 50;
-    paddle.height = 20;
+    paddle.height = 30;
     paddle.x = 50;
     paddle.y = WINDOW_HEIGHT - 40 - paddle.height;
     paddle.vel_y = 0;
@@ -202,11 +217,9 @@ void update(void) {
 
         for (int j = 0; j < shot_count; j++) {
             if (check_collision(&shots[j], &collectibles[i])) {
+                score += 10;
                 collectibles[i].x = (float)(rand() % (WINDOW_WIDTH - (int)collectibles[i].width));
                 collectibles[i].y = -collectibles[i].height;
-
-                // Incrementa la puntuación por cada recolectable destruido
-                score += 10;
 
                 // Mover los disparos restantes
                 for (int k = j; k < shot_count - 1; k++) {
@@ -216,13 +229,20 @@ void update(void) {
                 j--;
             }
         }
+
+        if (check_collision(&paddle, &collectibles[i])) {
+            score += 20;
+            collectibles[i].x = (float)(rand() % (WINDOW_WIDTH - (int)collectibles[i].width));
+            collectibles[i].y = -collectibles[i].height;
+        }
     }
 
     for (int i = 0; i < shot_count; i++) {
         shots[i].x += shots[i].vel_x * delta_time;
+        shots[i].y += shots[i].vel_y * delta_time;
 
-        if (shots[i].x > WINDOW_WIDTH) {
-            // Mover los disparos restantes
+        if (shots[i].x < 0 || shots[i].x > WINDOW_WIDTH ||
+            shots[i].y < 0 || shots[i].y > WINDOW_HEIGHT) {
             for (int j = i; j < shot_count - 1; j++) {
                 shots[j] = shots[j + 1];
             }
@@ -236,85 +256,92 @@ void render(void) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
+    // Renderizar el paddle
+    SDL_Rect paddle_rect = { (int)paddle.x, (int)paddle.y, (int)paddle.width, (int)paddle.height };
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);  // Rojo para el paddle
+    SDL_RenderFillRect(renderer, &paddle_rect);
+
+    // Renderizar obstáculos
+    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);  // Verde para obstáculos
+    for (int i = 0; i < MAX_STRUCTURES; i++) {
+        SDL_Rect structure_rect = { (int)structures[i].x, (int)structures[i].y, (int)structures[i].width, (int)structures[i].height };
+        SDL_RenderFillRect(renderer, &structure_rect);
+    }
+
+    // Renderizar recolectables
+    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);  // Azul para recolectables
+    for (int i = 0; i < MAX_COLLECTIBLES; i++) {
+        SDL_Rect collectible_rect = { (int)collectibles[i].x, (int)collectibles[i].y, (int)collectibles[i].width, (int)collectibles[i].height };
+        SDL_RenderFillRect(renderer, &collectible_rect);
+    }
+
+    // Renderizar el jefe
+    if (boss_active) {
+        SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);  // Amarillo para el jefe
+        SDL_Rect boss_rect = { (int)boss.x, (int)boss.y, (int)boss.width, (int)boss.height };
+        SDL_RenderFillRect(renderer, &boss_rect);
+    }
+
+    // Renderizar disparos
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);  // Blanco para los disparos
+    for (int i = 0; i < shot_count; i++) {
+        SDL_Rect shot_rect = { (int)shots[i].x, (int)shots[i].y, (int)shots[i].width, (int)shots[i].height };
+        SDL_RenderFillRect(renderer, &shot_rect);
+    }
+
+    // Renderizar el puntaje
+    char score_text[100];
+    snprintf(score_text, sizeof(score_text), "Puntuación: %d", score);
+    SDL_Color textColor = { 255, 255, 255 };
+    SDL_Surface* textSurface = TTF_RenderText_Solid(font, score_text, textColor);
+    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_FreeSurface(textSurface);
+
+    SDL_Rect text_rect = { 10, 10, textSurface->w, textSurface->h };
+    SDL_RenderCopy(renderer, textTexture, NULL, &text_rect);
+    SDL_DestroyTexture(textTexture);
+
+    // Renderizar el menú de inicio si está visible
     if (show_start_menu) {
         render_start_menu();
-    }
-    else {
-        SDL_Rect paddle_rect = {
-            (int)paddle.x, (int)paddle.y,
-            (int)paddle.width, (int)paddle.height
-        };
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_RenderFillRect(renderer, &paddle_rect);
-
-        for (int i = 0; i < MAX_STRUCTURES; i++) {
-            SDL_Rect structure_rect = {
-                (int)structures[i].x, (int)structures[i].y,
-                (int)structures[i].width, (int)structures[i].height
-            };
-            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-            SDL_RenderFillRect(renderer, &structure_rect);
-        }
-
-        for (int i = 0; i < shot_count; i++) {
-            SDL_Rect shot_rect = {
-                (int)shots[i].x, (int)shots[i].y,
-                (int)shots[i].width, (int)shots[i].height
-            };
-            SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-            SDL_RenderFillRect(renderer, &shot_rect);
-        }
-
-        for (int i = 0; i < MAX_COLLECTIBLES; i++) {
-            SDL_Rect collectible_rect = {
-                (int)collectibles[i].x, (int)collectibles[i].y,
-                (int)collectibles[i].width, (int)collectibles[i].height
-            };
-            SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-            SDL_RenderFillRect(renderer, &collectible_rect);
-        }
-
-        if (boss_active) {
-            SDL_Rect boss_rect = {
-                (int)boss.x, (int)boss.y,
-                (int)boss.width, (int)boss.height
-            };
-            SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-            SDL_RenderFillRect(renderer, &boss_rect);
-        }
-
-        // Mostrar la puntuación
-        char score_text[100];
-        snprintf(score_text, sizeof(score_text), "Score: %d", score);
-        SDL_Color textColor = { 255, 255, 255 };
-        SDL_Surface* textSurface = TTF_RenderText_Solid(font, score_text, textColor);
-        SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-        SDL_FreeSurface(textSurface);
-
-        SDL_Rect text_rect = { 10, 10, textSurface->w, textSurface->h };
-        SDL_RenderCopy(renderer, textTexture, NULL, &text_rect);
-        SDL_DestroyTexture(textTexture);
+        return;
     }
 
     SDL_RenderPresent(renderer);
 }
 
 int main(int argc, char* argv[]) {
-    SDL_Init(SDL_INIT_VIDEO);
-    TTF_Init();
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        printf("Error initializing SDL: %s\n", SDL_GetError());
+        return 1;
+    }
 
-    window = SDL_CreateWindow("Mi Juego", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
+    if (TTF_Init() == -1) {
+        printf("Error initializing SDL_ttf: %s\n", TTF_GetError());
+        return 1;
+    }
+
+    window = SDL_CreateWindow("Juego SDL", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
+    if (!window) {
+        printf("Error creating window: %s\n", SDL_GetError());
+        return 1;
+    }
+
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    font = TTF_OpenFont("C:/Users/USUARIO/OneDrive/Escritorio/sc-2420-eval-u1-Cristian171/GameClasic/GameCs/font.ttf", 24);
+    if (!renderer) {
+        printf("Error creating renderer: %s\n", SDL_GetError());
+        return 1;
+    }
 
+    font = TTF_OpenFont("C:/Users/USUARIO/OneDrive/Escritorio/sc-2420-eval-u1-Cristian171/GameClasic/GameCs/font.ttf", 24);
     if (!font) {
         printf("Error loading font: %s\n", TTF_GetError());
         return 1;
     }
 
     setup();
-
     game_is_running = true;
+
     while (game_is_running) {
         if (show_start_menu) {
             process_menu_input();
@@ -322,7 +349,7 @@ int main(int argc, char* argv[]) {
         else {
             process_input();
             update();
-        }
+        }  
         render();
     }
 
